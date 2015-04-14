@@ -280,11 +280,10 @@ class TestFlight:
 
 
 
-        start_thrust = 21000
+        start_thrust = 45000
         min_thrust = 10000
         max_thrust = 60000
         thrust_increment = 3000
-
         flag = True
 
 
