@@ -280,10 +280,10 @@ class TestFlight:
 
 
 
-        start_thrust = 11000
+        start_thrust = 21000
         min_thrust = 10000
         max_thrust = 60000
-        thrust_increment = 1000
+        thrust_increment = 3000
 
         flag = True
 
@@ -309,6 +309,9 @@ class TestFlight:
         roll = start_roll
         thrust = start_thrust
         yaw = start_yaw
+
+        #unlock the thrust protection
+        self.crazyflie.commander.send_setpoint(0,0,0,0)
 
         # Start the keyread thread
         keyreader = KeyReaderThread()
