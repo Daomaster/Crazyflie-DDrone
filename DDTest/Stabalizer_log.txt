@@ -1,0 +1,2 @@
+Stabilizer log
+{date} {Roll} {Pitch} {Yaw} {Thrust}
