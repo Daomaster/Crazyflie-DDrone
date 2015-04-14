@@ -28,13 +28,8 @@ accelvaluesZ = []
 # Global key for threads
 key = ""
 
-# Global value for current and target altitude
+# Global value for current altitude
 current_alt = 0
-target_alt = 650
-
-
-
-
 
 class _GetchUnix:
     """
@@ -188,11 +183,9 @@ class TestFlight:
 
 
 
-
+    # fucntion to log CF's barometer data.
 
     def print_baro_data(self, ident, data, logconfig):
-        # function to log CF's barometer data.
-
         #logging.info("Id={0}, Barometer: asl={1:.4f}".format(ident, data["baro.aslLong"]))
         # global
         global current_alt
@@ -235,34 +228,6 @@ class TestFlight:
         #print(accelvaluesZ)
 
 
-
-    def recursive_step(self, data):
-
-        ## CF's recursive function call to hover itself
-        ## 2015.10.4
-        ## Heungseok Park.
-
-        global current_alt
-        global target_alt
-        current_alt = data["baro.aslLong"]
-
-        if(current_alt < target_alt):
-            sys.stdout.write("Current alt is lower than target value, Let's go up!\r\n")
-            self.crazyflie.commander.send_setpoint(0, 0, 0, 40000)
-            return self.recursive_step(data)
-
-        elif(current_alt > target_alt):
-            sys.stdout.write("Currnet alt is higher than target value, Let's go down!\r\n")
-            self.crazyflie.commander.send_setpoint(0, 0, 0, 30000)
-            return self.recursive_step(data)
-
-        elif(current_alt == target_alt):
-            sys.stdout.write("Now, current and target altitude is same, Let's hover!\r\n")
-            self.crazyflie.param.set_value("flightmode.althold", "False")
-            return
-
-
-
     def increasing_step(self):
 
         # If you use global var, you need to modify global copy
@@ -272,13 +237,9 @@ class TestFlight:
         global accelvaluesZ
         global current_alt
 
-        print(current_alt) # now, this will print 0
+        print(current_alt)
 
         # (blades start to rotate after 10000)
-
-        start_alt = 640
-
-
 
         start_thrust = 11000
         min_thrust = 10000
@@ -287,7 +248,10 @@ class TestFlight:
 
         flag = True
 
-
+        start_roll = 0
+        roll_increment = 30
+        min_roll = -50
+        max_roll = 50
 
         start_roll = 0
         roll_increment = 30
@@ -303,6 +267,7 @@ class TestFlight:
         yaw_increment = 30
         min_yaw = -200
         max_yaw = 200
+
         stop_moving_count = 0
 
         pitch = start_pitch
