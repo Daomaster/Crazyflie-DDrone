@@ -289,7 +289,7 @@ class TestFlight:
         #initialize the var
 
         # Thrust init
-        start_thrust = 11000
+        start_thrust = 43000
         min_thrust = 10000
         max_thrust = 60000
         thrust_increment = 3000
@@ -344,13 +344,20 @@ class TestFlight:
         while key != "e":
             # key q is to kill the drone
             if key == 'q':
-                thrust = pitch = roll = yaw = 0
+                #thrust = pitch = roll = yaw = 0
+                thrust = 0
+                pitch = 0
+                roll = 0
+                yaw = 0
+
             # key w is to increase the thrust
             elif key == 'w' and (thrust + thrust_increment <= max_thrust):
                 thrust += thrust_increment
+                print "thrust: " + thrust
             # key s is to decrease the thrust
             elif key == 's' and (thrust - thrust_increment >= min_thrust):
                 thrust -= thrust_increment
+                print "thrust: " + thrust
             # key d is to increase the yaw
             elif key == 'd' and (yaw + yaw_increment <= max_yaw):
                 yaw += yaw_increment
@@ -389,15 +396,19 @@ class TestFlight:
 
             #elif key == 'x':
 
-            # if the user did not input the keys listed then it count untill 40
+            # if the user did not input the keys listed then it count until 40
             # then kill the drone
-            else:
+            elif key == '':
                 if stop_moving_count >= 40:
                     pitch = 0
                     roll = 0
                     yaw = 0
                 else:
                     stop_moving_count += 1
+
+            else:
+                pass
+            key = ''
 
             self.crazyflie.commander.send_setpoint(roll, pitch, yaw, thrust)
 
