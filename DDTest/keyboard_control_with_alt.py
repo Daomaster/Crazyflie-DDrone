@@ -52,11 +52,9 @@ class _GetchUnix:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
 
-
-
 class KeyReaderThread(Thread):
     """
-    This class is a basic thread for reading the keyboard continously
+    This class is a basic thread for reading the keyboard
     """
     def __init__(self):
         """
@@ -81,25 +79,30 @@ class TestFlight:
 
     def __init__(self):
         """
-        Initialize the quadcopter
+        Initialize the quad copter
         """
+        # Log file for Accelerometer
         self.f1 = open('Accelerometer_log.txt', 'w')
+        # Log file for Pitch Roll Yaw
         self.f2 = open('Stabalizer_log.txt', 'w')
+        # Log file for altitude
         self.f3 = open('Barometer_log.txt', 'w')
 
-
+        # write data into the log files
         self.f1.write('Accelerometer log\n {date} {acc.x} {acc.y} {acc.z}\n')
         self.f2.write('Stabilizer log\n{date} {Roll} {Pitch} {Yaw} {Thrust}\n')
         self.f3.write('Barometer log\n {data} {ASL}\n')
 
-
+        # get the Unix time
         self.starttime = time.time()*1000.0
         self.date = time.time()*1000.0 - self.starttime
 
+        # Initialize the crazyflie and get the drivers ready
         self.crazyflie = cflib.crazyflie.Crazyflie()
         print 'Initializing drivers'
         cflib.crtp.init_drivers()
 
+        # Start scanning available devices
         print 'Searching for available devices'
         available = cflib.crtp.scan_interfaces()
 
@@ -150,20 +153,14 @@ class TestFlight:
 
         # Log barometer
         # we use only barometer value(ASL Value) to control altitude
-        # Heungseok Park, 4.9.2015
-
         self.logBaro = LogConfig("Baro", 200)
         self.logBaro.add_variable("baro.aslLong", "float")
-
         self.crazyflie.log.add_config(self.logBaro)
-        if self.logBaro.valid:
+        if  self.logBaro.valid:
             self.logBaro.data_received_cb.add_callback(self.print_baro_data)
             self.logBaro.start()
         else:
             print 'Could not setup log configuration for barometer after connection!'
-
-
-
 
         """
         # Log Accelerometer
@@ -182,22 +179,22 @@ class TestFlight:
 
         """
 
+        # Start another thread and doing control function call
         print "log for debugging: before start increasing_step"
         Thread(target=self.increasing_step).start()
 
 
 
-
-
-
     def print_baro_data(self, ident, data, logconfig):
-        # function to log CF's barometer data.
+        # Output the Barometer data
 
         #logging.info("Id={0}, Barometer: asl={1:.4f}".format(ident, data["baro.aslLong"]))
-        # global
+
+        # global variable that holds current altitude
         global current_alt
         current_alt = data["baro.aslLong"]
 
+        # system output the time and the altitude, each id represents a time slice in Unix
         date = time.time()*1000.0 - self.starttime
         sys.stdout.write('Id={0}, Baro: baro.aslLong{1:.4f}\r\n'.format(ident, data["baro.aslLong"]))
         self.f3.write('{} {}\n'.format(date, data["baro.aslLong"]))
@@ -205,12 +202,17 @@ class TestFlight:
         pass
 
     def print_stab_data(self, ident, data, logconfig):
+        # Output the stablizer data (roll pith yaw)
+
         sys.stdout.write('Id={0}, Stabilizer: Roll={1:.2f}, Pitch={2:.2f}, Yaw={3:.2f}, Thrust={4:.2f}\r'.format(ident, data["stabilizer.roll"], data["stabilizer.pitch"], data["stabilizer.yaw"], data["stabilizer.thrust"]))
-        #print('Id={0}, Stabilizer: Roll={1:.2f}, Pitch={2:.2f}, Yaw={3:.2f}, Thrust={4:.2f}\r'.format(ident, data["stabilizer.roll"], data["stabilizer.pitch"], data["stabilizer.yaw"], data["stabilizer.thrust"]))
+        # print('Id={0}, Stabilizer: Roll={1:.2f}, Pitch={2:.2f}, Yaw={3:.2f}, Thrust={4:.2f}\r'.format(ident, data["stabilizer.roll"], data["stabilizer.pitch"], data["stabilizer.yaw"], data["stabilizer.thrust"]))
         self.f2.write('{} {} {} {} {}\n'.format(self.date, data["stabilizer.roll"], data["stabilizer.pitch"], data["stabilizer.roll"], data["stabilizer.pitch"], data["stabilizer.yaw"], data["stabilizer.thrust"]))
 
 
     def print_accel_data(self, ident, data, logconfig):
+        # Output the accelerometer data
+
+        # global variables that holds x,y,z value
         global accelvaluesX
         global accelvaluesY
         global accelvaluesZ
@@ -236,27 +238,33 @@ class TestFlight:
 
 
 
-    def recursive_step(self, data):
+    def recursive_step(self, altc, altt):
 
-        ## CF's recursive function call to hover itself
-        ## 2015.10.4
-        ## Heungseok Park.
+    # this function pass the crazyflie current altitude as well as target altitude
+    # it recursivly call it self in 3 situations
+    # Post condition; the drone reach to the target altitude and hover
 
-        global current_alt
-        global target_alt
-        current_alt = data["baro.aslLong"]
+        # Temp variables to hold the parameter
 
-        if(current_alt < target_alt):
+        current_temp = altc["baro.aslLong"]
+        target_temp = altt
+
+        # If the current < target the thrust up gain altitude
+        if(current_temp < target_temp):
             sys.stdout.write("Current alt is lower than target value, Let's go up!\r\n")
             self.crazyflie.commander.send_setpoint(0, 0, 0, 40000)
-            return self.recursive_step(data)
+            current_temp = altc["baro.aslLong"]
+            return self.recursive_step(current_temp, target_temp)
 
-        elif(current_alt > target_alt):
+        # If the current > target the thrust down lose altitude
+        elif(current_temp > target_temp):
             sys.stdout.write("Currnet alt is higher than target value, Let's go down!\r\n")
             self.crazyflie.commander.send_setpoint(0, 0, 0, 30000)
-            return self.recursive_step(data)
+            current_temp= altc["baro.aslLong"]
+            return self.recursive_step(current_temp, target_temp)
 
-        elif(current_alt == target_alt):
+        # If the current = target then hold the altitude by using the build-in function althold
+        elif(current_temp == target_temp):
             sys.stdout.write("Now, current and target altitude is same, Let's hover!\r\n")
             self.crazyflie.param.set_value("flightmode.althold", "False")
             return
@@ -264,6 +272,7 @@ class TestFlight:
 
 
     def increasing_step(self):
+        # This function reads the key, and different key input indicates different output
 
         # If you use global var, you need to modify global copy
         global key
@@ -272,38 +281,42 @@ class TestFlight:
         global accelvaluesZ
         global current_alt
 
+        # Debug for the current altitude
         print(current_alt) # now, this will print 0
 
-        # (blades start to rotate after 10000)
+        # (blades start to rotate after 10000
 
-        start_alt = 640
+        #initialize the var
 
-
-
+        # Thrust init
         start_thrust = 11000
         min_thrust = 10000
         max_thrust = 60000
         thrust_increment = 3000
+
+        # Flag is for the altitude hold mode
         flag = True
 
-
-
+        # Roll init
         start_roll = 0
         roll_increment = 30
         min_roll = -50
         max_roll = 50
 
+        # Pitch init
         start_pitch = 0
         pitch_increment = 30
         min_pitch = -50
         max_pitch = 50
 
+        # Yaw init
         start_yaw = 0
         yaw_increment = 30
         min_yaw = -200
         max_yaw = 200
         stop_moving_count = 0
 
+        # Target init
         pitch = start_pitch
         roll = start_roll
         thrust = start_thrust
@@ -320,45 +333,51 @@ class TestFlight:
         sys.stdout.write('================\r\n')
         sys.stdout.write("Use 'w' and 's' for the thrust, 'a' and 'd' for yaw, 'i' and 'k' for pitch and 'j' and 'l' for roll. Stop flying with 'q'. Exit with 'e'.\r\n")
 
+        #g = Gnuplot.Gnuplot(debug=1)
+        #g.title('A simple example') # (optional)
+        #g('set data style line') # give gnuplot an arbitrary command
+        # Plot a list of (x, y) pairs (tuples or a numpy array would
+        # also be OK):
+        #g.plot(accelvaluesX)
 
+        # key e is to exit the program
         while key != "e":
+            # key q is to kill the drone
             if key == 'q':
-                thrust = 0
-                pitch = 0
-                roll = 0
-                yaw = 0
-                g = Gnuplot.Gnuplot(debug=1)
-                g.title('A simple example') # (optional)
-                g('set data style line') # give gnuplot an arbitrary command
-                # Plot a list of (x, y) pairs (tuples or a numpy array would
-                # also be OK):
-                g.plot(accelvaluesX)
-
-
+                thrust = pitch = roll = yaw = 0
+            # key w is to increase the thrust
             elif key == 'w' and (thrust + thrust_increment <= max_thrust):
                 thrust += thrust_increment
-            elif key == 's' and (thrust - thrust_increment >= min_roll):
+            # key s is to decrease the thrust
+            elif key == 's' and (thrust - thrust_increment >= min_thrust):
                 thrust -= thrust_increment
+            # key d is to increase the yaw
             elif key == 'd' and (yaw + yaw_increment <= max_yaw):
                 yaw += yaw_increment
                 stop_moving_count = 0
+            # key a is to decrease the yaw
             elif key == 'a' and (yaw - yaw_increment >= min_yaw):
                 yaw -= yaw_increment
                 stop_moving_count = 0
+            # key l is to increase the roll
             elif key == 'l' and (roll + roll_increment <= max_roll):
                 roll += roll_increment
                 stop_moving_count = 0
+            # key j is to decrease the roll
             elif key == 'j' and (roll - roll_increment >= min_roll):
                 roll -= roll_increment
                 stop_moving_count = 0
+            # key i is to increase the pitch
             elif key == 'i' and (pitch + pitch_increment <= max_pitch):
                 pitch += pitch_increment
                 stop_moving_count = 0
+            # key k is to decrease the pitch
             elif key == 'k' and (pitch - pitch_increment >= min_pitch):
                 pitch -= pitch_increment
                 stop_moving_count = 0
+            # 'h' is altitude hold mode
             elif key == 'h':
-                ## 'h' is altitude hold mode, but did not working now
+                # flag is initialized as true
                 if flag == True:
                     self.crazyflie.param.set_value("flightmode.althold", "True")
                     sys.stdout.write("althold mode\r\n")
@@ -368,32 +387,24 @@ class TestFlight:
                     sys.stdout.write("standard mode\r\n")
                     flag = True
 
-            elif key == 'x':
-                # state. is x press or not?
-                # read the barometer and remember
-                # bar
-                pass
-            elif key == "":
-                # The controls are not being touch, get back to zero roll, pitch and yaw
+            #elif key == 'x':
+
+            # if the user did not input the keys listed then it count untill 40
+            # then kill the drone
+            else:
                 if stop_moving_count >= 40:
                     pitch = 0
                     roll = 0
                     yaw = 0
                 else:
                     stop_moving_count += 1
-            else:
-                pass
-            key = ""
+
             self.crazyflie.commander.send_setpoint(roll, pitch, yaw, thrust)
 
-
-        self.crazyflie.commander.send_setpoint(0,0,0,0)
         # Make sure that the last packet leaves before the link is closed
         # since the message queue is not flushed before closing
+        self.crazyflie.commander.send_setpoint(0,0,0,0)
         self.crazyflie.close_link()
 
-# X,Y accelerometer stabilization
-# Store the x,y values
-
-
+# Start the program
 TestFlight()
