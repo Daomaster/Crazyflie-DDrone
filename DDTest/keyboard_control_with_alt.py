@@ -345,6 +345,7 @@ class TestFlight:
             # key q is to kill the drone
             if key == 'q':
                 #thrust = pitch = roll = yaw = 0
+                print "killing the drone"
                 thrust = 0
                 pitch = 0
                 roll = 0
@@ -353,11 +354,13 @@ class TestFlight:
             # key w is to increase the thrust
             elif key == 'w' and (thrust + thrust_increment <= max_thrust):
                 thrust += thrust_increment
-                print "thrust: " + thrust
+                print "thrust: "
+                print thrust
             # key s is to decrease the thrust
             elif key == 's' and (thrust - thrust_increment >= min_thrust):
                 thrust -= thrust_increment
-                print "thrust: " + thrust
+                print "thrust: "
+                print thrust
             # key d is to increase the yaw
             elif key == 'd' and (yaw + yaw_increment <= max_yaw):
                 yaw += yaw_increment
@@ -388,10 +391,14 @@ class TestFlight:
                 if flag == True:
                     self.crazyflie.param.set_value("flightmode.althold", "True")
                     sys.stdout.write("althold mode\r\n")
+                    print "thrust: "
+                    print thrust
                     flag = False
                 else:
                     self.crazyflie.param.set_value("flightmode.althold", "False")
                     sys.stdout.write("standard mode\r\n")
+                    print "thrust: "
+                    print thrust
                     flag = True
 
             #elif key == 'x':
