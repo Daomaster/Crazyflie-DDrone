@@ -18,7 +18,7 @@ from cfclient.utils.logconfigreader import LogVariable
 from threading import Thread, Event
 from datetime import datetime
 
-#import Gnuplot
+import Gnuplot
 
 # Global values for accelometer
 accelvaluesX = []
@@ -280,7 +280,7 @@ class TestFlight:
 
 
 
-        start_thrust = 45000
+        start_thrust = 11000
         min_thrust = 10000
         max_thrust = 60000
         thrust_increment = 3000
@@ -327,12 +327,12 @@ class TestFlight:
                 pitch = 0
                 roll = 0
                 yaw = 0
-                #g = Gnuplot.Gnuplot(debug=1)
-                #g.title('A simple example') # (optional)
-                #g('set data style line') # give gnuplot an arbitrary command
+                g = Gnuplot.Gnuplot(debug=1)
+                g.title('A simple example') # (optional)
+                g('set data style line') # give gnuplot an arbitrary command
                 # Plot a list of (x, y) pairs (tuples or a numpy array would
                 # also be OK):
-                #g.plot(accelvaluesX)
+                g.plot(accelvaluesX)
 
 
             elif key == 'w' and (thrust + thrust_increment <= max_thrust):
