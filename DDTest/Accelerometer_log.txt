@@ -1,2 +1,0 @@
-Accelerometer log
- {date} {acc.x} {acc.y} {acc.z}
