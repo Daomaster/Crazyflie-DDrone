@@ -319,5 +319,160 @@ class TestFlight:
             self.crazyflie.param.set_value("flightmode.althold", "True")
             return
 
-    # Start the program
+
+
+    def increasing_step(self):
+        # This function reads the key, and different key input indicates different output
+
+        # If you use global var, you need to modify global copy
+        global key
+        global accelvaluesX
+        global accelvaluesY
+        global accelvaluesZ
+        global current_alt
+
+        # Debug for the current altitude
+        print(current_alt) # now, this will print 0
+
+        # (blades start to rotate after 10000
+
+        #initialize the var
+
+        # Thrust init
+        start_thrust = 43000
+        min_thrust = 10000
+        max_thrust = 60000
+        thrust_increment = 3000
+
+        # Flag is for the altitude hold mode
+        flag = True
+
+        # Roll init
+        start_roll = 0
+        roll_increment = 30
+        min_roll = -50
+        max_roll = 50
+
+        # Pitch init
+        start_pitch = 0
+        pitch_increment = 30
+        min_pitch = -50
+        max_pitch = 50
+
+        # Yaw init
+        start_yaw = 0
+        yaw_increment = 30
+        min_yaw = -200
+        max_yaw = 200
+        stop_moving_count = 0
+
+        # Target init
+        pitch = start_pitch
+        roll = start_roll
+        thrust = start_thrust
+        yaw = start_yaw
+
+        #unlock the thrust protection
+        self.crazyflie.commander.send_setpoint(0,0,0,0)
+
+        # Start the keyread thread
+        keyreader = KeyReaderThread()
+        keyreader.start()
+
+        sys.stdout.write('\r\nCrazyflie Status\r\n')
+        sys.stdout.write('================\r\n')
+        sys.stdout.write("Use 'w' and 's' for the thrust, 'a' and 'd' for yaw, 'i' and 'k' for pitch and 'j' and 'l' for roll. Stop flying with 'q'. Exit with 'e'.\r\n")
+
+        #g = Gnuplot.Gnuplot(debug=1)
+        #g.title('A simple example') # (optional)
+        #g('set data style line') # give gnuplot an arbitrary command
+        # Plot a list of (x, y) pairs (tuples or a numpy array would
+        # also be OK):
+        #g.plot(accelvaluesX)
+
+        # key e is to exit the program
+        while key != "e":
+            # key q is to kill the drone
+            if key == 'q':
+                #thrust = pitch = roll = yaw = 0
+                print "killing the drone"
+                thrust = 0
+                pitch = 0
+                roll = 0
+                yaw = 0
+
+            # key w is to increase the thrust
+            elif key == 'w' and (thrust + thrust_increment <= max_thrust):
+                thrust += thrust_increment
+                print "thrust: "
+                print thrust
+            # key s is to decrease the thrust
+            elif key == 's' and (thrust - thrust_increment >= min_thrust):
+                thrust -= thrust_increment
+                print "thrust: "
+                print thrust
+            # key d is to increase the yaw
+            elif key == 'd' and (yaw + yaw_increment <= max_yaw):
+                yaw += yaw_increment
+                stop_moving_count = 0
+            # key a is to decrease the yaw
+            elif key == 'a' and (yaw - yaw_increment >= min_yaw):
+                yaw -= yaw_increment
+                stop_moving_count = 0
+            # key l is to increase the roll
+            elif key == 'l' and (roll + roll_increment <= max_roll):
+                roll += roll_increment
+                stop_moving_count = 0
+            # key j is to decrease the roll
+            elif key == 'j' and (roll - roll_increment >= min_roll):
+                roll -= roll_increment
+                stop_moving_count = 0
+            # key i is to increase the pitch
+            elif key == 'i' and (pitch + pitch_increment <= max_pitch):
+                pitch += pitch_increment
+                stop_moving_count = 0
+            # key k is to decrease the pitch
+            elif key == 'k' and (pitch - pitch_increment >= min_pitch):
+                pitch -= pitch_increment
+                stop_moving_count = 0
+            # 'h' is altitude hold mode
+            elif key == 'h':
+                # flag is initialized as true
+                if flag == True:
+                    self.crazyflie.param.set_value("flightmode.althold", "True")
+                    sys.stdout.write("althold mode\r\n")
+                    print "thrust: "
+                    print thrust
+                    flag = False
+                else:
+                    self.crazyflie.param.set_value("flightmode.althold", "False")
+                    sys.stdout.write("standard mode\r\n")
+                    print "thrust: "
+                    print thrust
+                    flag = True
+
+            #elif key == 'x':
+
+            # if the user did not input the keys listed then it count until 40
+            # then kill the drone
+            elif key == '':
+                if stop_moving_count >= 40:
+                    pitch = 0
+                    roll = 0
+                    yaw = 0
+                else:
+                    stop_moving_count += 1
+
+            else:
+                pass
+            key = ''
+
+            self.crazyflie.commander.send_setpoint(roll, pitch, yaw, thrust)
+
+        # Make sure that the last packet leaves before the link is closed
+        # since the message queue is not flushed before closing
+        self.crazyflie.commander.send_setpoint(0,0,0,0)
+        self.crazyflie.close_link()
+
+# Start the program
 TestFlight()
