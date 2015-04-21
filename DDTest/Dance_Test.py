@@ -30,9 +30,10 @@ key = ""
 
 # Global value for current and target altitude
 current_alt = 0
-# target_alt = 705 # DD3
-# target_alt = 716 # DD1 motor not working
-target_alt = 705 # DD2 motor not working
+alt_init = 0.8
+alt_inc = 1
+target_alt = 0
+hold_mode = False
 
 
 
@@ -97,8 +98,8 @@ class TestFlight:
         self.f3.write('Barometer log\n {data} {ASL}\n')
 
         # get the Unix time
-        self.starttime = time.time()*1000.0
-        self.date = time.time()*1000.0 - self.starttime
+        self.starttime = time.time() * 1000.0
+        self.date = time.time() * 1000.0 - self.starttime
 
         # Initialize the crazyflie and get the drivers ready
         self.crazyflie = cflib.crazyflie.Crazyflie()
@@ -187,6 +188,7 @@ class TestFlight:
 
         # Thread(target=self.increasing_step).start()
         # Thread(target=self.recursive_step).start()
+
         Thread(target=self.init_alt).start()
 
 
@@ -197,12 +199,21 @@ class TestFlight:
 
         #logging.info("Id={0}, Barometer: asl={1:.4f}".format(ident, data["baro.aslLong"]))
 
-        # global variable that holds current altitude
+        # Get the Current altitude and put it in the global var
         global current_alt
         current_alt = data["baro.aslLong"]
 
+        # The Target Altitude = Current + init
+        global target_alt
+        global alt_init
+        # Use a temp var to hold the value of target
+        target = round(current_alt) + alt_init
+        # if the target did not initialized then initialize it
+        if target_alt == 0:
+            target_alt = target
+
         # system output the time and the altitude, each id represents a time slice in Unix
-        date = time.time()*1000.0 - self.starttime
+        date = time.time() * 1000.0 - self.starttime
         sys.stdout.write('Id={0}, Baro: baro.aslLong{1:.4f}\r\n'.format(ident, data["baro.aslLong"]))
         self.f3.write('{} {}\n'.format(date, data["baro.aslLong"]))
 
@@ -249,24 +260,35 @@ class TestFlight:
         global target_alt
         global current_alt
 
+
         current_temp = current_alt
         target_temp = target_alt
+        if current_temp != 0:
+            print "- current_temp" + str(current_temp)
+            print "- target_temp" + str(target_temp)
 
-        #print "- current_temp" + current_temp
-        #print "- target_temp" + target_temp
+        # If the current = target then hold the altitude by using the build-in function althold
+        if round(current_temp, 1) == target_temp:
+            if current_temp != 0:
+                sys.stdout.write("Now, current and target altitude is same, Let's hover!\r\n")
+            self.crazyflie.param.set_value("flightmode.althold", "True")
+        #the althold will last 4 second and then we set the thrust to 32767 which is the value that will hover
+            self.crazyflie.commander.send_setpoint(0, 0, 0, 32767)
+
+            return self.init_alt()
 
         # If the current < target the thrust up gain altitude
         # round function change float value to int
-        if(round(current_temp) < target_temp):
+        elif round(current_temp, 3) < target_temp:
             sys.stdout.write("Current alt is lower than target value, Let's go up!\r\n")
-            self.crazyflie.commander.send_setpoint(0, 0, 0, 43000)
+            self.crazyflie.commander.send_setpoint(0, 0, 0, 45000)
             #for bandwidth reason, the command need to be delayed
-            time.sleep(0.5)
+            time.sleep(0.2)
 
             return self.init_alt()
 
         # If the current > target the thrust down lose altitude
-        elif(round(current_temp) > target_temp):
+        elif round(current_temp, 3) > target_temp:
             sys.stdout.write("Current alt is higher than target value, Let's go down!\r\n")
             self.crazyflie.commander.send_setpoint(0, 0, 0, 32000)
             #for bandwidth reason, the command need to be delayed
@@ -275,49 +297,9 @@ class TestFlight:
             return self.init_alt()
 
 
-        # If the current = target then hold the altitude by using the build-in function althold
-        elif(round(current_temp) == target_temp):
-            sys.stdout.write("Now, current and target altitude is same, Let's hover!\r\n")
-            self.crazyflie.param.set_value("flightmode.althold", "True")
-        #the althold will last 4 second and then we set the thrust to 32767 which is the value that will hover
-            self.crazyflie.commander.send_setpoint(0, 0, 0, 32767)
 
 
 
-
-
-
-
-    def recursive_step(self, altc, altt):
-
-    # this function pass the crazyflie current altitude as well as target altitude
-    # it recursivly call it self in 3 situations
-    # Post condition; the drone reach to the target altitude and hover
-
-        # Temp variables to hold the parameter
-
-        current_temp = altc["baro.aslLong"]
-        target_temp = altt
-
-        # If the current < target the thrust up gain altitude
-        if(current_temp < target_temp):
-            sys.stdout.write("Current alt is lower than target value, Let's go up!\r\n")
-            self.crazyflie.commander.send_setpoint(0, 0, 0, 40000)
-            current_temp = altc["baro.aslLong"]
-            return self.recursive_step(current_temp, target_temp)
-
-        # If the current > target the thrust down lose altitude
-        elif(current_temp > target_temp):
-            sys.stdout.write("Currnet alt is higher than target value, Let's go down!\r\n")
-            self.crazyflie.commander.send_setpoint(0, 0, 0, 30000)
-            current_temp= altc["baro.aslLong"]
-            return self.recursive_step(current_temp, target_temp)
-
-        # If the current = target then hold the altitude by using the build-in function althold
-        elif(current_temp == target_temp):
-            sys.stdout.write("Now, current and target altitude is same, Let's hover!\r\n")
-            self.crazyflie.param.set_value("flightmode.althold", "True")
-            return
 
     # Start the program
 TestFlight()
