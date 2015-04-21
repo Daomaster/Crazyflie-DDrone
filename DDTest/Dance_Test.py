@@ -30,7 +30,10 @@ key = ""
 
 # Global value for current and target altitude
 current_alt = 0
-target_alt = 650
+# target_alt = 705 # DD3
+# target_alt = 716 # DD1 motor not working
+target_alt = 705 # DD2 motor not working
+
 
 
 
@@ -181,7 +184,11 @@ class TestFlight:
 
         # Start another thread and doing control function call
         print "log for debugging: before start increasing_step"
-        Thread(target=self.increasing_step).start()
+
+        # Thread(target=self.increasing_step).start()
+        # Thread(target=self.recursive_step).start()
+        Thread(target=self.init_alt).start()
+
 
 
 
@@ -236,6 +243,48 @@ class TestFlight:
         #print(accelvaluesY)
         #print(accelvaluesZ)
 
+    def init_alt(self):
+
+        #global current_alt
+        global target_alt
+        global current_alt
+
+        current_temp = current_alt
+        target_temp = target_alt
+
+        #print "- current_temp" + current_temp
+        #print "- target_temp" + target_temp
+
+        # If the current < target the thrust up gain altitude
+        # round function change float value to int
+        if(round(current_temp) < target_temp):
+            sys.stdout.write("Current alt is lower than target value, Let's go up!\r\n")
+            self.crazyflie.commander.send_setpoint(0, 0, 0, 43000)
+
+            time.sleep(0.5)
+
+            return self.init_alt()
+
+        # If the current > target the thrust down lose altitude
+        elif(round(current_temp) > target_temp):
+            sys.stdout.write("Currnet alt is higher than target value, Let's go down!\r\n")
+            self.crazyflie.commander.send_setpoint(0, 0, 0, 32000)
+
+            time.sleep(0.2)
+
+            return self.init_alt()
+
+
+        # If the current = target then hold the altitude by using the build-in function althold
+        elif(round(current_temp) == target_temp):
+            sys.stdout.write("Now, current and target altitude is same, Let's hover!\r\n")
+            self.crazyflie.param.set_value("flightmode.althold", "True")
+            self.crazyflie.commander.send_setpoint(0, 0, 0, 32767)
+            return self.init_alt()
+
+
+
+
 
 
     def recursive_step(self, altc, altt):
@@ -266,7 +315,7 @@ class TestFlight:
         # If the current = target then hold the altitude by using the build-in function althold
         elif(current_temp == target_temp):
             sys.stdout.write("Now, current and target altitude is same, Let's hover!\r\n")
-            self.crazyflie.param.set_value("flightmode.althold", "False")
+            self.crazyflie.param.set_value("flightmode.althold", "True")
             return
 
 
