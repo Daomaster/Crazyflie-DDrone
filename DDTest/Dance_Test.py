@@ -31,9 +31,9 @@ key = ""
 # Global value for current and target altitude
 current_alt = 0
 alt_init = 0.8
-alt_inc = 1
+alt_inc = 0.2
 target_alt = 0
-hold_mode = False
+user_mode = False
 
 
 
