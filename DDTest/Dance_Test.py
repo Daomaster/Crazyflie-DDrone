@@ -281,7 +281,7 @@ class TestFlight:
         # round function change float value to int
         elif round(current_temp, 3) < target_temp:
             sys.stdout.write("Current alt is lower than target value, Let's go up!\r\n")
-            self.crazyflie.commander.send_setpoint(0, 0, 0, 45000)
+            self.crazyflie.commander.send_setpoint(0, 0, 0, 40000)
             #for bandwidth reason, the command need to be delayed
             time.sleep(0.2)
 
