@@ -30,7 +30,7 @@ key = ""
 
 # Global value for current and target altitude
 current_alt = 0
-alt_init = 0.8
+alt_init = 1.0
 alt_inc = 0.2
 target_alt = 0
 user_mode = False
@@ -137,24 +137,6 @@ class TestFlight:
         Set the loggers
         """
 
-        """
-        # Log stabilizer
-        self.logStab = LogConfig("Stabalizer", 200)
-        self.logStab.add_variable("stabilizer.roll", "float")
-        self.logStab.add_variable("stabilizer.pitch", "float")
-        self.logStab.add_variable("stabilizer.yaw", "float")
-        self.logStab.add_variable("stabilizer.thrust", "uint16_t")
-
-        self.crazyflie.log.add_config(self.logStab)
-
-        if self.logStab.valid:
-            self.logStab.data_received_cb.add_callback(self.print_stab_data)
-            self.logStab.start()
-        else:
-            print 'Could not setup log configuration for stabilizer after connection!'
-
-        """
-
         # Log barometer
         # we use only barometer value(ASL Value) to control altitude
         self.logBaro = LogConfig("Baro", 200)
@@ -166,22 +148,9 @@ class TestFlight:
         else:
             print 'Could not setup log configuration for barometer after connection!'
 
-        """
-        # Log Accelerometer
-        self.logAccel = LogConfig("Accel",200)
-        self.logAccel.add_variable("acc.x", "float")
-        self.logAccel.add_variable("acc.y", "float")
-        self.logAccel.add_variable("acc.z", "float")
 
-        self.crazyflie.log.add_config(self.logAccel)
 
-        if self.logAccel.valid:
-            self.logAccel.data_received_cb.add_callback(self.print_accel_data)
-            self.logAccel.start()
-        else:
-            print 'Could not setup log configuration for accelerometer after connection!'
 
-        """
 
         # Start another thread and doing control function call
         print "log for debugging: before start increasing_step"
@@ -237,7 +206,7 @@ class TestFlight:
         sys.stdout.write('Id={0}, Accelerometer: x={1:.2f}, y={2:.2f}, z={3:.2f}\r".format(ident, data["acc.x"], data["acc.y"], data["acc.z"]))')
         #print("Id={0}, Accelerometer: x={1:.2f}, y={2:.2f}, z={3:.2f}\n".format(ident, data["acc.x"], data["acc.y"], data["acc.z"]))
 
-        self.f1.write('{} {} {} {}\n'.format(self.date, data["acc.x"], data["acc.y"], data["acc.z"]))
+        #self.f1.write('{} {} {} {}\n'.format(self.date, data["acc.x"], data["acc.y"], data["acc.z"]))
 
         #sys.stdout.write("Id={0}, Accelerometer: x={1:.2f}, y={2:.2f}, z={3:.2f}\r".format(ident, data["acc.x"], data["acc.y"], data["acc.z"]))
         #date = time.time()*1000.0 - self.starttime
