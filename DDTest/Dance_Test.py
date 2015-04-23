@@ -33,7 +33,8 @@ current_alt = 0
 alt_init = 0.8
 alt_inc = 0.2
 target_alt = 0
-user_mode = False
+user_mode = True
+flag_key_thread = True
 
 
 
@@ -160,7 +161,7 @@ class TestFlight:
         self.logBaro = LogConfig("Baro", 200)
         self.logBaro.add_variable("baro.aslLong", "float")
         self.crazyflie.log.add_config(self.logBaro)
-        if  self.logBaro.valid:
+        if self.logBaro.valid:
             self.logBaro.data_received_cb.add_callback(self.print_baro_data)
             self.logBaro.start()
         else:
@@ -188,8 +189,19 @@ class TestFlight:
 
         # Thread(target=self.increasing_step).start()
         # Thread(target=self.recursive_step).start()
+        """
+        while 1:
+            if current_alt:
+                Thread(target=self.init_alt).start()
+                break
+            else:
+                self.crazyflie.commander.send_setpoint(0, 0, 0, 40000)
+                time.sleep(1)
+                print "didn't get altitude yet"
+        """
 
-        Thread(target=self.init_alt).start()
+        Thread(target=self.increasing_step).start()
+
 
 
 
@@ -219,40 +231,6 @@ class TestFlight:
 
         pass
 
-    def print_stab_data(self, ident, data, logconfig):
-        # Output the stablizer data (roll pith yaw)
-
-        sys.stdout.write('Id={0}, Stabilizer: Roll={1:.2f}, Pitch={2:.2f}, Yaw={3:.2f}, Thrust={4:.2f}\r'.format(ident, data["stabilizer.roll"], data["stabilizer.pitch"], data["stabilizer.yaw"], data["stabilizer.thrust"]))
-        # print('Id={0}, Stabilizer: Roll={1:.2f}, Pitch={2:.2f}, Yaw={3:.2f}, Thrust={4:.2f}\r'.format(ident, data["stabilizer.roll"], data["stabilizer.pitch"], data["stabilizer.yaw"], data["stabilizer.thrust"]))
-        self.f2.write('{} {} {} {} {}\n'.format(self.date, data["stabilizer.roll"], data["stabilizer.pitch"], data["stabilizer.roll"], data["stabilizer.pitch"], data["stabilizer.yaw"], data["stabilizer.thrust"]))
-
-
-    def print_accel_data(self, ident, data, logconfig):
-        # Output the accelerometer data
-
-        # global variables that holds x,y,z value
-        global accelvaluesX
-        global accelvaluesY
-        global accelvaluesZ
-        sys.stdout.write('Id={0}, Accelerometer: x={1:.2f}, y={2:.2f}, z={3:.2f}\r".format(ident, data["acc.x"], data["acc.y"], data["acc.z"]))')
-        #print("Id={0}, Accelerometer: x={1:.2f}, y={2:.2f}, z={3:.2f}\n".format(ident, data["acc.x"], data["acc.y"], data["acc.z"]))
-
-        self.f1.write('{} {} {} {}\n'.format(self.date, data["acc.x"], data["acc.y"], data["acc.z"]))
-
-        #sys.stdout.write("Id={0}, Accelerometer: x={1:.2f}, y={2:.2f}, z={3:.2f}\r".format(ident, data["acc.x"], data["acc.y"], data["acc.z"]))
-        #date = time.time()*1000.0 - self.starttime
-
-        #small_array = []
-        #small_array.append(date)
-        #small_array.append(data["acc.x"])
-        #small_array.append(data["acc.y"])
-        #small_array.append(data["acc.z"])
-
-
-        #accelvaluesX.append(small_array_x)
-        #print(accelvaluesX)
-        #print(accelvaluesY)
-        #print(accelvaluesZ)
 
     def init_alt(self):
 
@@ -263,9 +241,9 @@ class TestFlight:
 
         current_temp = current_alt
         target_temp = target_alt
-        if current_temp != 0:
-            print "- current_temp" + str(current_temp)
-            print "- target_temp" + str(target_temp)
+
+        print "- current_temp" + str(current_temp)
+        print "- target_temp" + str(target_temp)
 
         # If the current = target then hold the altitude by using the build-in function althold
         if round(current_temp, 1) == target_temp:
@@ -296,7 +274,58 @@ class TestFlight:
 
             return self.init_alt()
 
+    def increasing_step(self):
+        # This function reads the key, and different key input indicates different output
 
+        # If you use global var, you need to modify global copy
+        global key
+        global current_alt
+        global target_alt
+        global user_mode
+
+        # Start the keyread thread
+        keyreader = KeyReaderThread()
+        keyreader.start()
+
+        sys.stdout.write('\r\nCrazyflie Status\r\n')
+        sys.stdout.write('================\r\n')
+        sys.stdout.write("Use 'w' is increase the target altitude\r\n")
+
+
+        # key e is to exit the program
+        while key != "e":
+            print str(key)
+            # key q is to kill the drone
+            if key == 'q':
+                #thrust = pitch = roll = yaw = 0
+                print "killing the drone"
+                thrust = 0
+                pitch = 0
+                roll = 0
+                yaw = 0
+
+            # key w is to increase the thrust
+            elif key == 'w':
+                if user_mode:
+                    target_alt -= alt_inc
+                    user_mode = True
+                    print "Decrease the Altitude to :"
+                    print target_alt
+                else:
+                    target_alt += alt_inc
+                    user_mode = False
+                    print "Increase the Altitude to :"
+                    print target_alt
+
+            # if the user did not input the keys listed then it count until 40
+            # then kill the drone
+            elif key == '':
+                print "Initialize the altitude: "
+                self.init_alt()
+
+            else:
+                pass
+            key = ''
 
 
 
