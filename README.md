@@ -191,3 +191,7 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="1915", ATTRS{idProduct}=="7777", MODE="0664"
 
 Restart the computer and you are now able to access the USB radio dongle
 without being root.
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/Daomaster/crazyflie-ddrone/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
